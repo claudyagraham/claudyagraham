@@ -8,3 +8,31 @@ I’m especially interested in international finance, emerging markets, and role
 
 Outside of school, the ocean is where I recharge. Being in or near the water keeps me grounded and curious. What matters most to me is quality time with my friends and family. I try to bring the same things to my work that I value with them: showing up, listening well, and following through!
 
+
+
+
+
+
+
+
+
+
+
+## Engagements
+
+Engagement write-ups will be added here as I complete them.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
