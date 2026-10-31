@@ -41,4 +41,4 @@ If sourced market data in Stage 4 shows a forward rate well below 1.1807, or if 
 
 This brief names the exposure before any hedge is chosen. Next I will design the workbook on paper (Stage 2), have an AI build it while I audit its work (Stage 3), replace placeholders with sourced, timestamped market data (Stage 4), and validate the result independently before writing the decision memo (Stage 5). A process is coming, not a gut call.
 
-Reviewed with help from Claude (Anthropic, 2026); edited by me.
+Reviewed with help from Claude (Anthropic, 2026); edited by me, Claudya Graham. 
