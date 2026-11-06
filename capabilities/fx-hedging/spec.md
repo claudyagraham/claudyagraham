@@ -34,27 +34,27 @@ BRAND FORMATTING — applied per docs/_branding/design.json (v1.0.0)
   Full brand standard: docs/_branding/design.json · Source: https://manoa.hawaii.edu/brand/
 -->
 
-# [COMPANY NAME] — FX Transaction Hedge Model · Technical Specification
+# [ship-propulsion] — FX Transaction Hedge Model · Technical Specification
 
 > <span style="color:#024731; font-weight:700;">Technical specification</span> for the FX transaction hedge model — the named-range contract, calculation flow, and validation checks, precise enough that an AI or a colleague could build (or rebuild) the workbook from this document alone. This spec is the input the AI-assisted build works from.
 
 | Field | Value |
 |------|------|
-| **Created by** | [name] |
-| **Updated by** | [name] |
-| **Date Created** | [YYYY-MM-DD] |
-| **Date Updated** | [YYYY-MM-DD] |
-| **Version** | [0.0] |
-| **LLM Used** (optional) | [LLM name and how it was used] |
+| **Created by** | [Claudya Graham] |
+| **Updated by** | [Claudya Graham] |
+| **Date Created** | [2026-11-06] |
+| **Date Updated** | [2026-11-06] |
+| **Version** | [0.1] |
+| **LLM Used** (optional) | [Claude (Anthropic):used to proof read and ensure instructions were followed accurately.] |
 | **Role** | Treasury Analyst / FP&A Analyst |
 | **Audience** | CFO / Director of Treasury |
-| **Companion Workbook** | student build |
+| **Companion Workbook** | capabilities/fx-hedging/model.xlsx |
 
 ---
 
 ## 1. Problem Statement
 
-Briefly restate the exposure, timing, and objective in professional terms (3–5 sentences).
+a U.S. ship-propulsion engineering firm, has invoiced a Greek shipyard EUR 5,600,000, payable 365 days (12 months) after inception. Because the receivable is denominated in euros, the USD value of the cash received depends on the EURUSD spot rate at settlement. A weaker euro reduces USD proceeds, and at the placeholder spot of 1.1600 each 1% decline in the euro costs about USD 64,960. This specification defines a workbook that compares an unhedged position with three hedges (forward, money-market, put option) so the CFO can see each strategy's USD proceeds, cost, and downside protection across a plus-or-minus 5% range of settlement spot rates.
 
 <details>
 <summary><span style="color:#024731; font-weight:600;">Example phrasing (Receivable)</span></summary>
@@ -72,7 +72,21 @@ Briefly restate the exposure, timing, and objective in professional terms (3–5
 
 ## 2. Inputs (Known Variables)
 
-All inputs should be exposed as workbook **named ranges** so Calculation Flow (§4) reads the same whether implemented in Excel, Python, or an AI prompt. Dates, sources, and access timestamps are recorded in the Notes tab. Market inputs (spot, forward, rates, premia) are the only cells an analyst should adjust for scenario work.
+All values below are indicative, replaced with live market data at Stage 4. Input cells appear only on the Inputs tab.
+
+| Name | Placeholder | Unit | Stage 4 data source |
+|---|---|---|---|
+| `FC_AMT` | 5,600,000 | EUR | Scenario 18 (client invoice) |
+| `S0_in` | 1.1600 (placeholder, chosen so the parity check in Section 7 passes) | USD per EUR | Live EURUSD spot quote |
+| `F0_in` | 1.1807 (given as indicative by the scenario) | USD per EUR | Live 12-month EURUSD forward quote |
+| `R_USD` | 5.30% annual, ACT/360 (placeholder) | % per year | Fed H.15 |
+| `R_FC` | 3.48% annual, ACT/360 (placeholder, chosen so the parity check passes) | % per year | ECB deposit rate |
+| `K_PUT` | = `S0_in` (strike at spot, per scenario) | USD per EUR | Live option quote |
+| `K_CALL` | = `S0_in` (strike at spot, per scenario) | USD per EUR | Live option quote |
+| `PREM_PUT` | 0.0245 | USD per EUR | Live option quote |
+| `PREM_CALL` | 0.0448 | USD per EUR | Live option quote |
+| `T_DAYS` | 365 | Days | Contract settlement date minus inception date |
+
 
 ### 2.1 Core Inputs
 
@@ -107,8 +121,43 @@ All inputs should be exposed as workbook **named ranges** so Calculation Flow (�
 
 ## 3. Assumptions & Constraints
 
-State every convention used. Clarity here is what makes the model reproducible.
+- **Rate basis:** simple interest, ACT/360, annual rates, one cash flow at `T_DAYS` = 365.
+- **Transaction costs:** none. No bid-ask spreads, fees, or commissions. `F0_in` is treated as executable.
+- **Borrowing/investing:** the firm borrows EUR at `R_FC` and invests USD at `R_USD`, with no borrow/lend spread.
+- **Parity expectation:** covered interest rate parity holds approximately; forward and money-market proceeds should agree within 0.01%.
+- **Option premiums:** quoted in USD per EUR with no contract multiplier, so total premium = `FC_AMT` x premium. Options are European, sized exactly to `FC_AMT`, and exercised only at settlement. The premium is deducted from proceeds at its nominal USD amount and is not future-valued (a deliberate simplification).
+- **The call:** a long EUR call pays off when the euro rises, so it does not protect a euro receivable. It is specified as a reference payoff only and is excluded from the comparison chart.
+- **Credit and counterparty risk:** ignored. The shipyard pays in full on the settlement date.
+- **Taxes and hedge accounting:** excluded.
+- **Build constraints:** every input is a named range; no hardcoded numbers inside formulas; no cell addresses in this document.
 
+## 5. Calculation flow
+
+Named-range notation only. Spot at settlement is `S_T`.
+
+**Forward hedge (`Calc_Forward`)**
+- `FWD_PROCEEDS` = `FC_AMT` x `F0_in`
+
+**Money-market hedge (`Calc_MoneyMarket`), three separate steps, one cell each**
+- Step 1, borrow EUR today: `MM_BORROW_FC` = `FC_AMT` / (1 + `R_FC` x `T_DAYS`/360). This sizes the loan so the receivable repays it exactly at settlement.
+- Step 2, convert at spot: `MM_USD_NOW` = `MM_BORROW_FC` x `S0_in`
+- Step 3, invest USD to settlement: `MM_PROCEEDS` = `MM_USD_NOW` x (1 + `R_USD` x `T_DAYS`/360)
+
+**Parity check (`Calc_MoneyMarket`)**
+- `F_IMPLIED` = `S0_in` x (1 + `R_USD` x `T_DAYS`/360) / (1 + `R_FC` x `T_DAYS`/360)
+- `PARITY_GAP_PCT` = ABS(`MM_PROCEEDS` - `FWD_PROCEEDS`) / `FWD_PROCEEDS`
+
+**Put hedge (`Calc_Options`)**
+- `PUT_PREM_TOTAL` = `FC_AMT` x `PREM_PUT`
+- `PUT_FLOOR` = `FC_AMT` x (`K_PUT` - `PREM_PUT`)
+- `PUT_NET(S_T)` = `FC_AMT` x MAX(`S_T`, `K_PUT`) - `FC_AMT` x `PREM_PUT`
+
+**Call reference payoff (`Calc_Options`)**
+- `CALL_PREM_TOTAL` = `FC_AMT` x `PREM_CALL`
+- `CALL_PAYOFF(S_T)` = `FC_AMT` x (MAX(`S_T` - `K_CALL`, 0) - `PREM_CALL`)
+
+**Unhedged baseline**
+- `UNHEDGED(S_T)` = `FC_AMT` x `S_T`
 - **Quote convention:** All rates expressed as **USD per unit of foreign currency** (e.g., USD/GBP, USD/EUR). A higher quote means FC appreciation.
 - **Horizon:** Single-maturity model; `T_DAYS = 365` unless otherwise noted. Templates assume a 1-year tenor.
 - **Day-count basis:** The default 1-year tenor uses the textbook simplified-annual form `(1 + r)` for both USD and FC legs. The general form is `r × T_DAYS / BASIS`, with `BASIS = 360` for USD and EUR money-market quotes (ACT/360) and `BASIS = 365` for GBP money-market quotes (ACT/365). The template exposes a **single `BASIS`** named range (simplification). A rigorous build should split it into `BASIS_USD` and `BASIS_FC` so each leg applies its own convention. Record it in §6.2.
@@ -123,8 +172,10 @@ State every convention used. Clarity here is what makes the model reproducible.
 
 ## 4. Calculation Flow
 
-Described in named-range pseudocode so the logic is portable across Excel, Python, and AI prompts. Formulas are written for a **receivable** exposure; Step 7 shows the sign flips required for a payable.
-
+- **Grid:** `S_T` runs from 0.95 x `S0_in` to 1.05 x `S0_in` in 1% steps, 11 rows (1.1020 to 1.2180 with the placeholder spot).
+- **Table columns:** `S_T`, % change vs `S0_in`, `UNHEDGED`, `FWD_PROCEEDS`, `MM_PROCEEDS`, `PUT_NET`, and `UNHEDGED` + `CALL_PAYOFF` (reference).
+- **Chart:** one line chart with `S_T` on the x-axis and USD proceeds on the y-axis, plotting Unhedged, Forward, Money-market, and Put net.
+- **What it should let the CFO see:** the forward and money-market lines are flat and nearly identical (certainty, no upside). The unhedged line rises and falls with the euro. The put has a floor at `PUT_FLOOR`, which is below the forward line because the strike is at spot, so the put costs USD 253,120 of downside protection compared with the forward at the placeholder values. The put line crosses the forward line at `S_T` = `F0_in` + `PREM_PUT`; the put wins only above that rate.
 ### Step 1 — Derived inputs
 
 1. `DF_USD` = `1 + R_USD × T_DAYS / BASIS` *(accumulation / growth factor, not a fractional discount factor)*
@@ -232,6 +283,10 @@ Record candidly what the model gets right and where it needs work. If you are wr
 ---
 
 ## 7. Sensitivity Plan
+- **Grid:** `S_T` runs from 0.95 x `S0_in` to 1.05 x `S0_in` in 1% steps, 11 rows (1.1020 to 1.2180 with the placeholder spot).
+- **Table columns:** `S_T`, % change vs `S0_in`, `UNHEDGED`, `FWD_PROCEEDS`, `MM_PROCEEDS`, `PUT_NET`, and `UNHEDGED` + `CALL_PAYOFF` (reference).
+- **Chart:** one line chart with `S_T` on the x-axis and USD proceeds on the y-axis, plotting Unhedged, Forward, Money-market, and Put net.
+- **What it should let the CFO see:** the forward and money-market lines are flat and nearly identical (certainty, no upside). The unhedged line rises and falls with the euro. The put has a floor at `PUT_FLOOR`, which is below the forward line because the strike is at spot, so the put costs USD 253,120 of downside protection compared with the forward at the placeholder values. The put line crosses the forward line at `S_T` = `F0_in` + `PREM_PUT`; the put wins only above that rate.
 
 - **Grid:** `S_T_grid` spans `S0_in × (1 ± 5%)` in 1% increments → 11 rows (including the baseline).
 - **Strategies plotted:** no hedge, forward, money market, option (put for receivable / call for payable).
