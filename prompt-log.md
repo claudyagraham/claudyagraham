@@ -16,3 +16,20 @@
 **AI Use:** Claude (Anthropic) assisted with the initial specification review. ChatGPT (OpenAI) helped interpret instructor feedback, identify inconsistencies, and draft revisions. I reviewed and edited the specification before committing the changes to GitHub.
 
 AI use: Claude (Anthropic) did the arithmetic and drafted the brief; I reviewed and edited it.
+
+----
+
+
+## 2026-11-13: Stage 3 FX Hedging AI-Assisted Build and Audit
+
+**What I asked:** I used ChatGPT to generate a working Excel workbook from my revised Stage 2 FX hedging specification. I requested ten named inputs, forward and money-market hedge calculations, option payoffs, a dynamic sensitivity table and chart, and visible validation checks.
+
+**What went wrong:** During my review, I discovered that the EUR borrowing amount was incorrectly formatted with a dollar symbol. The covered-interest-parity check also reported a 4.8994% difference between forward and money-market proceeds, exceeding the specified 0.01% threshold.
+
+**How I caught it:** I opened the workbook in Microsoft Excel, inspected the money-market calculations and validation results, and tested the model by changing the initial spot rate from 1.1081 to 1.1200. The sensitivity calculations updated correctly.
+
+**What I changed:** I corrected the EUR borrowing currency formatting, retained and documented the failed parity validation, and restored the original spot rate after testing. I also reviewed the sensitivity chart and its four hedge strategies.
+
+**What I would do differently:** I would verify original market-data sources earlier, check currency formatting immediately, and test model recalculation before relying on any AI-generated results.
+
+**AI Use:** ChatGPT (OpenAI) generated the initial workbook and assisted with interpreting the results and preparing the audit documentation. I independently reviewed the workbook in Excel and performed the recorded checks.
