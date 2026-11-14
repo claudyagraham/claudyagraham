@@ -40,12 +40,14 @@ BRAND FORMATTING — applied per docs/_branding/design.json (v1.0.0)
 
 | Field | Value |
 |------|------|
-| **Created by** | [Claudya Graham] |
-| **Updated by** | [Claudya Graham] |
-| **Date Created** | [2026-11-06] |
-| **Date Updated** | [2026-11-06] |
-| **Version** | [0.1] |
-| **LLM Used** (optional) | [Claude (Anthropic):used to proof read and ensure instructions were followed accurately.] |
+
+| **Created by** | Claudya Graham |
+| **Updated by** | Claudya Graham |
+| **Date Created** | 2026-11-06 |
+| **Date Updated** | 2026-11-13 |
+| **Version** | 0.2 |
+| **LLM Used** | Claude (Anthropic) for initial proofreading; ChatGPT (OpenAI) for revisions following instructor feedback. |
+
 | **Role** | Treasury Analyst / FP&A Analyst |
 | **Audience** | CFO / Director of Treasury |
 | **Companion Workbook** | capabilities/fx-hedging/model.xlsx |
@@ -54,19 +56,14 @@ BRAND FORMATTING — applied per docs/_branding/design.json (v1.0.0)
 
 ## 1. Problem Statement
 
-a U.S. ship-propulsion engineering firm, has invoiced a Greek shipyard EUR 5,600,000, payable 365 days (12 months) after inception. Because the receivable is denominated in euros, the USD value of the cash received depends on the EURUSD spot rate at settlement. A weaker euro reduces USD proceeds, and at the placeholder spot of 1.1600 each 1% decline in the euro costs about USD 64,960. This specification defines a workbook that compares an unhedged position with three hedges (forward, money-market, put option) so the CFO can see each strategy's USD proceeds, cost, and downside protection across a plus-or-minus 5% range of settlement spot rates.
 
-<details>
-<summary><span style="color:#024731; font-weight:600;">Example phrasing (Receivable)</span></summary>
+A U.S. ship-propulsion engineering firm has invoiced a Greek shipyard EUR 5,600,000, payable 365 days after inception. Because the receivable is denominated in euros, the USD value of the cash received depends on the EUR/USD spot exchange rate at settlement.
 
-> [Company] expects a [FC amount] receivable denominated in [EUR/GBP/JPY] settling in [T] days. A [depreciation/appreciation] in [currency pair] over that horizon would reduce realized USD proceeds and compress [gross margin / earnings / cash-flow coverage]. This specification documents the analytical framework used to quantify and compare four strategies — **no hedge**, **forward hedge**, **money-market hedge**, and **option (put) hedge** — and to produce the sensitivity evidence that supports the Stage 5 decision memo.
-</details>
+A weaker euro reduces USD proceeds. At the model's current spot assumption of 1.1081 USD/EUR, a 1% depreciation of the euro reduces the unhedged receivable's USD value by approximately $62,053.60.
 
-**Include:**
-- Exposure type (receivable or payable) and functional currency
-- Foreign-currency amount, quote convention (USD per FC), settlement date
-- Objective (protect USD value, preserve upside, minimize premium cost, etc.)
-- Decision context (corporate treasury, business unit, board-approved policy)
+This specification defines an Excel workbook that compares four strategies: no hedge, forward hedge, money-market hedge, and EUR put option hedge.
+
+The objective is to help the CFO evaluate USD proceeds, hedging costs, downside protection, and upside potential across a +/-5% range of settlement exchange rates.
 
 ---
 
@@ -113,8 +110,8 @@ The workbook calculates the following intermediate values using Excel formulas:
 | `USD_INVEST` | USD proceeds invested today | `EUR_BORROW * S0_in` |
 | `MM_PROCEEDS` | Money-market USD proceeds at settlement | `USD_INVEST * (1 + R_USD * T_DAYS / 360)` |
 | `FWD_PROCEEDS` | Forward hedge USD proceeds | `FC_AMT * F0_in` |
-| `PUT_NET` | Net put hedge USD proceeds | `FC_AMT * MAX(S_T, K_PUT) - FC_AMT * PREM_PUT` |
-| `CALL_NET` | Net call proceeds, reference calculation | `FC_AMT * MIN(S_T, K_CALL) - FC_AMT * PREM_CALL` |
+| `PUT_NET` | Net put hedge USD proceeds | `FC_AMT * MAX(S_T, K_PUT) - FC_AMT * PREM_PUT` 
+| `CALL_NET` | Net payoff from a long EUR call, reference only | `FC_AMT * MAX(S_T - K_CALL, 0) - FC_AMT * PREM_CALL` |
 
 The put and call premium calculations use the simplified nominal-premium convention specified in Section 3. Premiums are not future-valued. All intermediate values must be calculated dynamically using formulas.
 
@@ -151,17 +148,17 @@ All worksheets must use consistent variable names and formula-driven calculation
 
 
 
-## 5. Calculation Flow
+## 4. Calculation Flow
 
 All calculations must use Excel formulas referencing the standardized named inputs. Settlement spot rate is represented by `S_T`.
 
-### 5.1 Forward Hedge (`Calc_Forward`)
+### 4.1 Forward Hedge
 
 The forward hedge locks in the USD value of the EUR receivable.
 
 - `FWD_PROCEEDS = FC_AMT * F0_in`
 
-### 5.2 Money-Market Hedge (`Calc_MoneyMarket`)
+### 4.2 Money-Market Hedge
 
 The money-market hedge must show three separate calculation steps:
 
@@ -174,7 +171,7 @@ The money-market hedge must show three separate calculation steps:
 3. Invest the USD proceeds until settlement:
    `MM_PROCEEDS = MM_USD_NOW * (1 + R_USD * T_DAYS / 360)`
 
-### 5.3 Covered Interest Parity Check
+### 4.3 Covered Interest Parity Check
 
 Calculate the theoretical forward rate and the percentage difference between the money-market and forward hedge proceeds.
 
@@ -183,7 +180,7 @@ Calculate the theoretical forward rate and the percentage difference between the
 
 The calculated difference must be displayed in the workbook. Because market-rate proxies and a scenario-indicative forward quote are used, the parity check may fail the specified tolerance. A failed check must be documented rather than forced to pass.
 
-### 5.4 Put Option Hedge (`Calc_Options`)
+### 4.4 Put Option Hedge
 
 The firm purchases a EUR put option to protect against depreciation of the euro.
 
@@ -193,7 +190,7 @@ The firm purchases a EUR put option to protect against depreciation of the euro.
 
 The put protects against EUR depreciation while preserving upside if the EUR appreciates. The premium is deducted at nominal USD value, following the simplified model convention.
 
-### 5.5 Call Option Reference Payoff (`Calc_Options`)
+### 4.5 Call Option Reference Payoff
 
 A long EUR call is included for reference only and is not a hedge for the EUR receivable.
 
@@ -201,13 +198,13 @@ A long EUR call is included for reference only and is not a hedge for the EUR re
 - `CALL_PAYOFF(S_T) = FC_AMT * MAX(S_T - K_CALL, 0)`
 - `CALL_NET(S_T) = CALL_PAYOFF(S_T) - CALL_PREM_TOTAL`
 
-### 5.6 Unhedged Baseline
+### 4.6 Unhedged Baseline
 
 The unhedged position converts the full EUR receivable at the settlement spot rate.
 
 - `UNHEDGED(S_T) = FC_AMT * S_T`
 
-### 5.7 Calculation Requirements
+### 4.7 Calculation Requirements
 
 - All exchange rates are quoted as USD per EUR.
 - The settlement horizon is `T_DAYS = 365`.
@@ -217,18 +214,18 @@ The unhedged position converts the full EUR receivable at the settlement spot ra
 - Option premiums must be denominated in USD.
 - The workbook must not contain hard-coded calculated outputs.
 
-## 4. Sensitivity Analysis Requirements
+## 5. Sensitivity Analysis Requirements
 
 The workbook must include a formula-driven sensitivity analysis showing how the settlement exchange rate affects the USD proceeds of each hedging strategy.
 
-### 4.1 Settlement Exchange Rate Scenarios
+### 5.1 Settlement Exchange Rate Scenarios
 
 - The settlement exchange rate, `S_T`, must range from 95% to 105% of `S0_in`.
 - The analysis must use 1% increments, producing 11 scenarios.
 - All exchange rates must be expressed in USD per EUR.
 - Every sensitivity row must recalculate automatically when the relevant model inputs change.
 
-### 4.2 Required Sensitivity Table
+### 5.2 Required Sensitivity Table
 
 The sensitivity table must include:
 
@@ -243,7 +240,7 @@ The sensitivity table must include:
 
 All calculated values must reference the formulas and named inputs defined in Section 5.
 
-### 4.3 Required Sensitivity Chart
+### 5.3 Required Sensitivity Chart
 
 Create one line chart with:
 
@@ -254,8 +251,7 @@ Create one line chart with:
 
 The chart must update automatically when the underlying model inputs change.
 
-### 4.4 Financial Interpretation
-
+### 5.4 Financial Interpretation
 The chart should demonstrate the financial trade-offs between:
 
 - Forward hedge: fixed USD proceeds and protection against EUR depreciation.
@@ -265,7 +261,7 @@ The chart should demonstrate the financial trade-offs between:
 
 The forward and money-market results may differ because the model uses market-rate proxies and a scenario-indicative forward quote.
 
-The sensitivity analysis must support the financial recommendations developed in Stage 5.
+The sensitivity analysis must support the financial recommendations developed in Stage 4.
 ---
 
 ## 6. Outputs
